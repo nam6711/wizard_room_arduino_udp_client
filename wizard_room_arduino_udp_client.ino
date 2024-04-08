@@ -31,12 +31,12 @@ char  ReplyBuffer[] = "acknowledged";       // a string to send back
 WiFiUDP Udp;
 
 Servo servo;
-int servoPos = 100;
-int servoDirec = 1;
+int servo_pos = 0;
+int key_released = 0;
 
 void setup() {
   servo.attach(8);
-  servo.write(servoPos);
+  servo.write(servo_pos);
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
   while (!Serial) {
@@ -100,18 +100,40 @@ void loop() {
     Serial.println("Contents:");
     Serial.println(packetBuffer);
     // servo change
-    if (strcmp("rotate", packetBuffer)) {
-      if (servoPos >= 180 || servoPos <= 0)
-        servoDirec *= -1;
+    if (packetSize == 9 && !memcmp("reset key", packetBuffer, 9))
+      reset_arduino();
+    else if (packetSize == 11 && !memcmp("release key", packetBuffer, 11))
+      release_key();
 
-      servoPos += 30 * servoDirec;
-      servo.write(servoPos);
-    }
     // send a reply, to the IP address and port that sent us the packet we received
     Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
     Udp.write(ReplyBuffer);
     Udp.endPacket();
   }
+}
+
+void reset_arduino() {
+  if (!key_released)
+    return;
+
+  Serial.println("RESETING");
+  // release key
+  servo_pos = 0;
+  servo.write(servo_pos);
+  key_released = 0;
+  delay(1000);
+}
+
+void release_key() {
+  if (key_released)
+    return;
+
+  Serial.println("RELEASING");
+  // release key
+  servo_pos = 135;
+  servo.write(servo_pos);
+  key_released = 1;
+  delay(1000);
 }
 
 void printWifiStatus() {
