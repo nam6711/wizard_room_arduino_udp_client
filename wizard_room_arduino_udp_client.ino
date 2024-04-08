@@ -6,6 +6,7 @@
  */
 
 #include <Arduino.h>
+#include <Servo.h>
 #include <string.h>
 
 #include <WiFiS3.h>
@@ -21,15 +22,21 @@ int keyIndex = 0;           // your network key index number (needed only for WE
 
 unsigned int localPort = 3000;  // local port to listen on
 
-char* server = "http://wizard-room-websockets-server-40bd8fdd0d82.herokuapp.com";
-char* local_ip = "ws://172.16.8.125";
+// char* server = "http://wizard-room-websockets-server-40bd8fdd0d82.herokuapp.com";
+// char* local_ip = "ws://172.16.8.125";
 
 char packetBuffer[255]; //buffer to hold incoming packet
 char  ReplyBuffer[] = "acknowledged";       // a string to send back
 
 WiFiUDP Udp;
 
+Servo servo;
+int servoPos = 100;
+int servoDirec = 1;
+
 void setup() {
+  servo.attach(8);
+  servo.write(servoPos);
   // Open serial communications and wait for port to open:
   Serial.begin(9600);
   while (!Serial) {
@@ -92,6 +99,14 @@ void loop() {
     }
     Serial.println("Contents:");
     Serial.println(packetBuffer);
+    // servo change
+    if (strcmp("rotate", packetBuffer)) {
+      if (servoPos >= 180 || servoPos <= 0)
+        servoDirec *= -1;
+
+      servoPos += 30 * servoDirec;
+      servo.write(servoPos);
+    }
     // send a reply, to the IP address and port that sent us the packet we received
     Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
     Udp.write(ReplyBuffer);
